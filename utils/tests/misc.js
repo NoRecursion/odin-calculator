@@ -1,6 +1,6 @@
 import * as helpers from '../helpers.js';
 import * as interpreter from '../interpreter.js';
-import * as tokenRules from '../token_rules.js';
+import { tokenRules } from '../rulesets.js';
 
 let lex = interpreter.lexer("-1^2+3*4/4^2")
 let par = interpreter.parser(lex)

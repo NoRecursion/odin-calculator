@@ -1,4 +1,3 @@
-
 export function makeToken(value, position, rule){
   const token = {
     value: value,

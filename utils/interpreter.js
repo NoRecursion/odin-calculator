@@ -1,4 +1,4 @@
-import { tokenRules } from './token_rules.js';
+import { tokenRules } from './rulesets.js';
 import * as helpers from './helpers.js'
 
 function lexer(text){
