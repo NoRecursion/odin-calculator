@@ -2,7 +2,7 @@ import * as helpers from '../helpers.js';
 import * as interpreter from '../interpreter.js';
 import { tokenRules } from '../rulesets.js';
 
-let lex = interpreter.lexer("-1^2+3*4/4^2")
+let lex = interpreter.lexer("((1,2),3,(4,5))")
 let par = interpreter.parser(lex)
 //console.log([par].map(node=>node.obj))
 
@@ -61,6 +61,7 @@ function printTreeObj(head,maxiter=10){
 }
 
 //console.log(par)
-printTree(par)
+//printTree(par)
+printTreeObj(par)
 //console.log(tokenRules)\
 

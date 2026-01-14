@@ -1,25 +1,33 @@
 import * as helpers from './helpers.js'
 
-const opFuncs ={
+const opFuncs ={ //redo these maybe
     exp:(l,r)=>{return l^r;},
     mult:(l,r)=>{return l*r;},
-    divide:(l,r)=>{return l/r},
-    add:(l,r)=>{return l+r},
+    divide:(l,r)=>{return l/r;},
+    add:(l,r)=>{return l+r;},
     sub:(l,r)=>{return l-r;},
-    signInvert:(l,r)=>{return -r;},
+    invertSign:(l,r)=>{return -r;},
+    startTuple:(l,r)=>{return [l,r];},
+    extendTuple:(l,r)=>{l.push(r); return l;},
 }
 
 const prio={ //priority
-    literal: 20,
-    bracket: 18,
-    exp: 6,
-    mult: 4,
-    add: 2,
+  literal: 20,
+  bracket: 18,
+  exp: 8,
+  mult: 6,
+  add: 4,
+  comma: 2,
 }
 
 const parseAs = {
   decimal: (context, token)=>{
     const node = helpers.makeTreeNode(Number(token.value),prio.literal,token);
+    helpers.extendTip(context,node);
+    return;
+  },
+  ident: (context, token)=>{
+    const node = helpers.makeTreeNode(token.value,prio.literal,token);
     helpers.extendTip(context,node);
     return;
   },
@@ -49,10 +57,20 @@ const parseAs = {
     return;
   },
   invertSign: (context, token)=>{
-    const node = helpers.makeTreeNode(opFuncs.signInvert,prio.mult,token);
+    const node = helpers.makeTreeNode(opFuncs.invertSign,prio.mult,token);
     helpers.extendTip(context,node);
     return;
-  }
+  },
+  startTuple: (context,entry,token)=>{
+    const node = helpers.makeTreeNode(opFuncs.startTuple,prio.comma,token);
+    helpers.insertR(context,entry,node);
+    return;
+  },
+  extendTuple: (context,entry,token)=>{
+    const node = helpers.makeTreeNode(opFuncs.extendTuple,prio.comma,token);
+    helpers.insertR(context,entry,node);
+    return;
+  },
 }
 
 const t = { // short for types
@@ -64,9 +82,12 @@ const t = { // short for types
   num: "num",
   ident: "ident",
   operator: "operator",
+  comma: "comma"
 }
 
-
+const validPrefixes={
+  literal:[t.Lbracket,t.operator,t.entry,t.comma],
+}
 
 const tokenRules = [
   helpers.makeLexRule( 'whitespace',
@@ -87,17 +108,58 @@ const tokenRules = [
     /^\/\*[\s\S]*?\*\//,
     (val)=>val,
   ),
-  helpers.makeLexRule( 'Lparenthesis', //TODO
+  helpers.makeLexRule( 'comma',
+    t.comma,
+    false,
+    /^\,/,
+    (context, token)=> {
+      const thisPriority = context.priority+prio.comma;
+      const entry = helpers.findEntry(context, prio.comma+context.priority);
+      const lastType = context.tip.type;
+      if (![t.Rbracket,t.ident,t.num].includes(lastType)){throw new Error(`Unexpected token ',' after token of type ${lastType}`);}
+      if (entry.right == null){
+        if (entry === context.tip){throw new Error(`Comma cannot find left hand expression`)}
+        else {throw new Error(`Critical error. Tree data is corrupted. Send input string in bug report.`)}
+      }
+      const child = entry.right;
+      if (child.type == t.comma){
+        if (child.priority>thisPriority){parseAs.startTuple(context,entry,token)}
+        else if (child.priority==thisPriority){parseAs.extendTuple(context,entry,token)}
+        else {throw new Error(`Critical error. Impossible priority structure. Send input string in bug report.`)}
+      }
+      else if ([t.operator,t.ident,t.num].includes(child.type)){parseAs.startTuple(context,entry,token)}
+      else {throw new Error(`Critical error. Cannot find valid child for comma. Send input string in bug report.`)}
+      return;
+    },
+  ),
+  helpers.makeLexRule( 'Lparenthesis',
     t.Lbracket,
     false,
     /^\(/,
-    (val)=>val,
+    (context, token)=> {
+      const lastType = context.tip.type;
+      if (validPrefixes.literal.includes(lastType)){
+        context.priority+=prio.bracket;
+        context.bracketStack.push('(')
+      }
+      else {throw new Error(`Unexpected token '(' after token of type ${lastType}`);}
+      return;
+    },
   ),
-  helpers.makeLexRule( 'Rparenthesis',  //TODO
+  helpers.makeLexRule( 'Rparenthesis',
     t.Rbracket,
     false,
     /^\)/,
-    (val)=>val,
+    (context, token)=> {
+      const lastBracket = context.bracketStack.pop();
+      const lastType = context.tip.type;
+      if ([t.Rbracket,t.ident,t.num].includes(lastType)){
+        if (lastBracket == '('){context.priority-=prio.bracket;}
+        else {throw new Error(`Tried to close ${lastBracket} with )`);}
+      }
+      else {throw new Error(`Unexpected token '(' after token of type ${lastType}`);}
+      return;
+    },
   ),
   helpers.makeLexRule( 'Lsquare',  //TODO
     t.Lbracket,
@@ -117,7 +179,7 @@ const tokenRules = [
     /^\{/,
     (val)=>val,
   ),
-  helpers.makeLexRule( 'Rcurly',  //TODO 
+  helpers.makeLexRule( 'Rcurly',  //TODO
     t.Rbracket,
     false,
     /^\}/,
@@ -129,17 +191,22 @@ const tokenRules = [
     /^[0-9]+(\.[0-9]+)?/,
 
     (context, token)=> {
-      const lastType = context.tip.token.type;
-      if ([t.Lbracket,t.operator,t.entry].includes(lastType)){parseAs.decimal(context, token);}
+      const lastType = context.tip.type;
+      if (validPrefixes.literal.includes(lastType)){parseAs.decimal(context, token);}
       else {throw new Error(`Unexpected token 'decimal' after token of type ${lastType}`);}
       return;
     },
   ),
-  helpers.makeLexRule( 'identity', //TODO
+  helpers.makeLexRule( 'identity',
     t.ident,
     false,
     /^[A-Za-z_]\w*/,
-    (val)=>val,
+    (context, token)=> {
+      const lastType = context.tip.type;
+      if (validPrefixes.literal.includes(lastType)){parseAs.ident(context, token);}
+      else {throw new Error(`Unexpected token 'ident' after token of type ${lastType}`);}
+      return;
+    },
   ),
   helpers.makeLexRule( 'hat',
     t.operator,
@@ -164,9 +231,9 @@ const tokenRules = [
     false,
     /^\-/,
     (context, token)=>{
-      const lastType = context.tip.token.type;
+      const lastType = context.tip.type;
       if ([t.entry,t.operator,t.Lbracket].includes(lastType)){parseAs.invertSign(context,token);}
-      else if ([t.Rbracket,t.ident,t.num]){arseAs.sub(context,token);}
+      else if ([t.Rbracket,t.ident,t.num]){parseAs.sub(context,token);}
       else {throw new Error(`Unexpected token '-' after token of type ${lastType}`);}
     },
   ),

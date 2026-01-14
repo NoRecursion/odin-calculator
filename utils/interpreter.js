@@ -38,14 +38,16 @@ function lexer(text){
 }
 
 function parser(tokenList){
-  const entryToken= helpers.makeToken(null,null,{name:"entry",type:"entry",parseRule:()=>{throw new Error("Attempted to parse entry")},})
+  const entryToken= helpers.makeToken(null,null,{name:"entry",type:"entry",
+    parseRule:()=>{throw new Error("Critical Error, attempted to parse entry")},})
+
   const entryPoint= helpers.makeTreeNode("entry",0,entryToken);
 
   const context={
     entry: entryPoint,
     tip: entryPoint,
     tail: tokenList,
-    bracketStack: [],
+    bracketStack: ['0'],
     priority: 0,
   }
 
@@ -54,7 +56,7 @@ function parser(tokenList){
     context.tail = tokenList.slice(i+1);
     token.parseRule(context,token);
   }
-
+  
   return context.entry;
 }
 

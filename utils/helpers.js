@@ -14,6 +14,7 @@ export function makeTreeNode(obj,priority,token){
     parent: null,
     obj: obj,
     priority: priority,
+    type: token.type,
     token: token,
     left: null,
     right: null,
@@ -44,10 +45,10 @@ ${' '.repeat(index+3) + '^'}`
 
 export function insertR(context,entry,node){
   node.priority += context.priority;
-  const branch = entry.right;
-  if (branch!= null){
-      node.left = branch;
-      branch.parent = node;
+  const child = entry.right;
+  if (child!= null){
+    node.left = child;
+    child.parent = node;
   }
   entry.right = node;
   node.parent = entry;
@@ -71,15 +72,24 @@ export function descendInsert(context, node){
       if (entry.right.priority>=node.priority){break;}
       entry = entry.right
   }
-  const branch = entry.right;
-  if (branch!= null){
-      node.left = branch;
-      branch.parent = node;
+  const child = entry.right;
+  if (child!= null){
+      node.left = child;
+      child.parent = node;
   }
   entry.right = node;
   node.parent = entry;
   context.tip = node;
   return;
+}
+
+export function findEntry(context, priority){
+  let entry = context.entry;
+  while (entry.right!=null){
+      if (entry.right.priority>=priority){break;}
+      entry = entry.right
+  }
+  return entry;
 }
 
 export function makeLexRule(name,type,ignore,regex,parseRule){
@@ -101,7 +111,7 @@ export function makeBinaryOperatorParseRule(parser,validPrefixes){
   const func= (context, token)=> {
     const symbol = token.value;
 
-    const lastType = context.tip.token.type;
+    const lastType = context.tip.type;
     if (validPrefixes.includes(lastType)) {parser(context, token);}
     else {throw new Error(`Unexpected token ${symbol} after token of type ${lastType}`);}
     return;
