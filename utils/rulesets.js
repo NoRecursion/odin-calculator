@@ -1,18 +1,20 @@
 import * as helpers from './helpers.js'
 
 const opFuncs ={ //redo these maybe
-    exp:(l,r)=>{return l^r;},
-    mult:(l,r)=>{return l*r;},
-    divide:(l,r)=>{return l/r;},
-    add:(l,r)=>{return l+r;},
-    sub:(l,r)=>{return l-r;},
-    invertSign:(l,r)=>{return -r;},
-    startTuple:(l,r)=>{return [l,r];},
-    extendTuple:(l,r)=>{l.push(r); return l;},
+  exp:(l,r)=>{return l^r;},
+  mult:(l,r)=>{return l*r;},
+  divide:(l,r)=>{return l/r;},
+  add:(l,r)=>{return l+r;},
+  sub:(l,r)=>{return l-r;},
+  invertSign:(l,r)=>{return -r;},
+  startTuple:(l,r)=>{return [l,r];},
+  extendTuple:(l,r)=>{l.push(r); return l;},
+  fcall:(l,r)=>{return l(r);},
 }
 
 const prio={ //priority
   literal: 20,
+  fcall: 18,
   bracket: 18,
   exp: 8,
   mult: 6,
@@ -71,6 +73,12 @@ const parseAs = {
     helpers.insertR(context,entry,node);
     return;
   },
+  fcall: (context,entry,token)=>{
+    const node = helpers.makeTreeNode(opFuncs.fcall,prio.fcall,token);
+    node.type = t.fcall;
+    helpers.insertR(context,entry,node);
+    return;
+  },
 }
 
 const t = { // short for types
@@ -82,11 +90,13 @@ const t = { // short for types
   num: "num",
   ident: "ident",
   operator: "operator",
-  comma: "comma"
+  comma: "comma",
+  fcall: "fcall",
 }
 
 const validPrefixes={
-  literal:[t.Lbracket,t.operator,t.entry,t.comma],
+  literal:[t.Lbracket,t.operator,t.entry,t.comma,t.fcall],
+  binOp:[t.Rbracket,t.ident,t.num,t.fcall],
 }
 
 const tokenRules = [
@@ -127,7 +137,7 @@ const tokenRules = [
         else if (child.priority==thisPriority){parseAs.extendTuple(context,entry,token)}
         else {throw new Error(`Critical error. Impossible priority structure. Send input string in bug report.`)}
       }
-      else if ([t.operator,t.ident,t.num].includes(child.type)){parseAs.startTuple(context,entry,token)}
+      else if ([t.ident,t.num,t.fcall].includes(child.type)){parseAs.startTuple(context,entry,token)}
       else {throw new Error(`Critical error. Cannot find valid child for comma. Send input string in bug report.`)}
       return;
     },
@@ -138,9 +148,14 @@ const tokenRules = [
     /^\(/,
     (context, token)=> {
       const lastType = context.tip.type;
-      if (validPrefixes.literal.includes(lastType)){
+      if (validPrefixes.literal.includes(lastType)){ //Contents of parenthesis should evaluate to a literal (a number)
         context.priority+=prio.bracket;
-        context.bracketStack.push('(')
+        context.bracketStack.push('(');
+      }
+      else if (lastType == t.ident){
+        context.priority+=prio.bracket;
+        context.bracketStack.push('f');
+        parseAs.fcall(context,context.tip.parent,token);
       }
       else {throw new Error(`Unexpected token '(' after token of type ${lastType}`);}
       return;
@@ -155,6 +170,7 @@ const tokenRules = [
       const lastType = context.tip.type;
       if ([t.Rbracket,t.ident,t.num].includes(lastType)){
         if (lastBracket == '('){context.priority-=prio.bracket;}
+        else if (lastBracket == 'f'){context.priority-=prio.bracket;}
         else {throw new Error(`Tried to close ${lastBracket} with )`);}
       }
       else {throw new Error(`Unexpected token '(' after token of type ${lastType}`);}
@@ -212,19 +228,19 @@ const tokenRules = [
     t.operator,
     false,
     /^\^/,
-    helpers.makeBinaryOperatorParseRule(parseAs.exp,[t.Rbracket,t.ident,t.num]),
+    helpers.makeBinaryOperatorParseRule(parseAs.exp,validPrefixes.binOp),
   ),
   helpers.makeLexRule( 'slash',
     t.operator,
     false,
     /^\//,
-    helpers.makeBinaryOperatorParseRule(parseAs.divide,[t.Rbracket,t.ident,t.num]),
+    helpers.makeBinaryOperatorParseRule(parseAs.divide,validPrefixes.binOp),
   ),
   helpers.makeLexRule( 'star',
     t.operator,
     false,
     /^\*/,
-    helpers.makeBinaryOperatorParseRule(parseAs.mult,[t.Rbracket,t.ident,t.num]),
+    helpers.makeBinaryOperatorParseRule(parseAs.mult,validPrefixes.binOp),
   ),
   helpers.makeLexRule( 'dash',
     t.operator,
@@ -232,8 +248,8 @@ const tokenRules = [
     /^\-/,
     (context, token)=>{
       const lastType = context.tip.type;
-      if ([t.entry,t.operator,t.Lbracket].includes(lastType)){parseAs.invertSign(context,token);}
-      else if ([t.Rbracket,t.ident,t.num]){parseAs.sub(context,token);}
+      if (validPrefixes.literal.includes(lastType)){parseAs.invertSign(context,token);}
+      else if (validPrefixes.binOp.includes(lastType)){parseAs.sub(context,token);}
       else {throw new Error(`Unexpected token '-' after token of type ${lastType}`);}
     },
   ),
@@ -241,7 +257,7 @@ const tokenRules = [
     t.operator,
     false,
     /^\+/,
-    helpers.makeBinaryOperatorParseRule(parseAs.add,[t.Rbracket,t.ident,t.num]),
+    helpers.makeBinaryOperatorParseRule(parseAs.add,validPrefixes.binOp),
   ),
 ]
 
