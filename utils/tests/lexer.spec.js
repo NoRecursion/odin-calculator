@@ -8,35 +8,35 @@ describe('Recognizes tokens', () => {
 
   test('recognises ident', () => {
     const lexInput = "str";
-    const expectedOutput = ['str'];
+    const expectedOutput = ['SOE','str','EOE'];
 
     const lexOutput = debug.lexToFields(lexInput,'value');
     expect(lexOutput).toStrictEqual(expectedOutput);
   });
     test('recognizes simple expression', () => {
     const lexInput = "a+4";
-    const expectedOutput = ['a','+','4'];
+    const expectedOutput = ['SOE','a','+','4','EOE'];
 
     const lexOutput = debug.lexToFields(lexInput,'value');
     expect(lexOutput).toStrictEqual(expectedOutput);
   });
     test('recognizes decimals', () => {
     const lexInput = "a+4+7.2";
-    const expectedOutput = ['a','+','4','+','7.2'];
+    const expectedOutput = ['SOE','a','+','4','+','7.2','EOE'];
 
     const lexOutput = debug.lexToFields(lexInput,'value');
     expect(lexOutput).toStrictEqual(expectedOutput);
   });
     test('recognizes operators and brackets', () => {
     const lexInput = "+-*/^()[]{}";
-    const expectedOutput = ['+','-','*','/','^','(', ')','[',']','{','}'];
+    const expectedOutput = ['SOE','+','-','*','/','^','(', ')','[',']','{','}','EOE'];
 
     const lexOutput = debug.lexToFields(lexInput,'value');
     expect(lexOutput).toStrictEqual(expectedOutput);
   });
     test('ignores comments', () => {
     const lexInput = "var1/*com */var2 /*com*/ */var3 //com fakevar * a */\\d|a1";
-    const expectedOutput = ['var1','var2','*','/','var3'];
+    const expectedOutput = ['SOE','var1','var2','*','/','var3','EOE'];
 
     const lexOutput = debug.lexToFields(lexInput,'value');
     expect(lexOutput).toStrictEqual(expectedOutput);
@@ -46,29 +46,29 @@ describe('Recognizes tokens', () => {
 describe('Recognizes token name', () => {
   test('recognises ident', () => {
     const lexInput = "str";
-    const expectedOutput = ['identity'];
+    const expectedOutput = ['SOE','identity','EOE'];
 
     const lexOutput = debug.lexToFields(lexInput,'name');
     expect(lexOutput).toStrictEqual(expectedOutput);
   });
     test('recognizes simple expression', () => {
     const lexInput = "a+4";
-    const expectedOutput = ['identity','plus','decimal'];
+    const expectedOutput = ['SOE','identity','plus','decimal','EOE'];
 
     const lexOutput = debug.lexToFields(lexInput,'name');
     expect(lexOutput).toStrictEqual(expectedOutput);
   });
     test('recognizes decimals', () => {
     const lexInput = "a+4+7.2";
-    const expectedOutput = ['identity', 'plus', 'decimal', 'plus', 'decimal'];
+    const expectedOutput = ['SOE','identity', 'plus', 'decimal', 'plus', 'decimal','EOE'];
 
     const lexOutput = debug.lexToFields(lexInput,'name');
     expect(lexOutput).toStrictEqual(expectedOutput);
   });
     test('recognizes operators and brackets', () => {
     const lexInput = "+-*/^()[]{}";
-    const expectedOutput = ['plus','dash','star','slash','hat','Lparenthesis',
-                            'Rparenthesis','Lsquare','Rsquare','Lcurly','Rcurly'];
+    const expectedOutput = ['SOE','plus','dash','star','slash','hat','Lparenthesis',
+                            'Rparenthesis','Lsquare','Rsquare','Lcurly','Rcurly','EOE'];
 
     const lexOutput = debug.lexToFields(lexInput,'name');
     expect(lexOutput).toStrictEqual(expectedOutput);
@@ -80,14 +80,14 @@ describe('Correctly locates positions', () => {
     const lexInput = `${' '.repeat(13)}str`;
     const expectedOutput = 13;
 
-    const lexOutput = interpreter.lexer(lexInput)[0].position;
+    const lexOutput = interpreter.lexer(lexInput)[1].position;
     expect(lexOutput).toStrictEqual(expectedOutput);
   });
   test('whitespaces and tokens', () => {
     const lexInput = `${' '.repeat(13)}${'a'.repeat(5)}${' '.repeat(4)}^${' '.repeat(13)}${'3'.repeat(5)}`;
     const expectedOutput = 13+5+4;
 
-    const lexOutput = interpreter.lexer(lexInput)[1].position;
+    const lexOutput = interpreter.lexer(lexInput)[2].position;
     expect(lexOutput).toStrictEqual(expectedOutput);
   });
   test('complex input', () => {

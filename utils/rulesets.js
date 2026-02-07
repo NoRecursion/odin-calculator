@@ -23,83 +23,130 @@ const prio={ //priority
 }
 
 const parseAs = {
-  decimal: (context, token)=>{
+  decimal: (ctx, token)=>{
     const node = helpers.makeTreeNode(Number(token.value),prio.literal,token);
-    helpers.extendTip(context,node);
+    helpers.extendTip(ctx,node);
     return;
   },
-  ident: (context, token)=>{
+  ident: (ctx, token)=>{
     const node = helpers.makeTreeNode(token.value,prio.literal,token);
-    helpers.extendTip(context,node);
+    helpers.extendTip(ctx,node);
     return;
   },
-  exp: (context, token)=>{
+  exp: (ctx, token)=>{
     const node = helpers.makeTreeNode(opFuncs.exp,prio.exp,token);
-    helpers.descendInsert(context, node)
+    helpers.descendInsert(ctx, node)
     return;
   },
-  mult: (context, token)=>{
+  mult: (ctx, token)=>{
     const node = helpers.makeTreeNode(opFuncs.mult,prio.mult,token);
-    helpers.descendInsert(context, node)
+    helpers.descendInsert(ctx, node)
     return;
   },
-  divide: (context, token)=>{
+  divide: (ctx, token)=>{
     const node = helpers.makeTreeNode(opFuncs.divide,prio.mult,token);
-    helpers.descendInsert(context, node)
+    helpers.descendInsert(ctx, node)
     return;
   },
-  add: (context, token)=>{
+  add: (ctx, token)=>{
     const node = helpers.makeTreeNode(opFuncs.add,prio.add,token);
-    helpers.descendInsert(context, node)
+    helpers.descendInsert(ctx, node)
     return;
   },
-  sub: (context, token)=>{
+  sub: (ctx, token)=>{
     const node = helpers.makeTreeNode(opFuncs.sub,prio.add,token);
-    helpers.descendInsert(context, node)
+    helpers.descendInsert(ctx, node)
     return;
   },
-  invertSign: (context, token)=>{
+  invertSign: (ctx, token)=>{
     const node = helpers.makeTreeNode(opFuncs.invertSign,prio.mult,token);
-    helpers.extendTip(context,node);
+    helpers.extendTip(ctx,node);
     return;
   },
-  startTuple: (context,entry,token)=>{
+  startTuple: (ctx,entry,token)=>{
     const node = helpers.makeTreeNode(opFuncs.startTuple,prio.comma,token);
-    helpers.insertR(context,entry,node);
+    helpers.insertR(ctx,entry,node);
     return;
   },
-  extendTuple: (context,entry,token)=>{
+  extendTuple: (ctx,entry,token)=>{
     const node = helpers.makeTreeNode(opFuncs.extendTuple,prio.comma,token);
-    helpers.insertR(context,entry,node);
+    helpers.insertR(ctx,entry,node);
     return;
   },
-  fcall: (context,entry,token)=>{
+  fcall: (ctx,token)=>{
     const node = helpers.makeTreeNode(opFuncs.fcall,prio.fcall,token);
     node.type = t.fcall;
-    helpers.insertR(context,entry,node);
+
+    const ident = ctx.tip;
+    const entry = ident.parent;
+    node.left = ident;
+    ident.parent = node;
+
+    helpers.insertR(ctx,entry,node);
     return;
   },
 }
 
 const t = { // short for types
-  entry: "entry", // special type made by parser
+  SOE: "SOE", // special tokens for start and end of expression
+  EOE: "EOE",
+  root: "root", // special type made by parser
   Lbracket: "Lbracket",
   Rbracket: "Rbracket",
   spacer: "spacer",
   comment: "comment",
   num: "num",
   ident: "ident",
-  operator: "operator",
+  binop: "binop",
   comma: "comma",
   fcall: "fcall",
+  minus: "minus",
 }
 
-const validPrefixes={
-  literal:[t.Lbracket,t.operator,t.entry,t.comma,t.fcall],
-  binOp:[t.Rbracket,t.ident,t.num,t.fcall],
+const tGroups={
+  prev:{
+    lits: [t.ident,t.num],
+    ops: [t.binop,t.minus,t.comma,t.fcall], 
+  },
+  next:{
+    lits:[t.Lbracket,t.ident,t.num, t.fcall, t.minus],
+    ops:[t.Rbracket,t.binop,t.comma, t.minus, t.EOE],
+  }
 }
 
-const tokenRules = [
+export const specialTokens = {
+  SOE: helpers.makeLexRule( "SOE",
+      t.SOE,
+      false,
+      /^[^.]/,
+      (ctx, token)=> {
+        const nextToken = ctx.tokens[ctx.i+1];
+        if (!tGroups.next.lits.includes(nextToken.type)){
+          throw new Error(`Unexpected token '${nextToken.value}' at start of expression`);
+        }
+        return;
+      }
+  ),
+  EOE: helpers.makeLexRule( "EOE",
+      t.EOE,
+      false,
+      /^[^.]/,
+      (ctx, token)=> {
+        //do nothing
+        return;
+      }
+  ),
+  root: helpers.makeLexRule( "root",
+      t.root,
+      false,
+      /^[^.]/,
+      (ctx, token)=> {
+        throw new Error("Critical Error, attempted to parse root");
+      }
+  ),
+}
+
+export const tokenRules = [
   helpers.makeLexRule( 'whitespace',
     t.spacer,
     true,     
@@ -122,23 +169,25 @@ const tokenRules = [
     t.comma,
     false,
     /^\,/,
-    (context, token)=> {
-      const thisPriority = context.priority+prio.comma;
-      const entry = helpers.findEntry(context, prio.comma+context.priority);
-      const lastType = context.tip.type;
-      if (![t.Rbracket,t.ident,t.num].includes(lastType)){throw new Error(`Unexpected token ',' after token of type ${lastType}`);}
+    (ctx, token)=> {
+      const nextToken = ctx.tokens[ctx.i+1];
+      if (!tGroups.next.lits.includes(nextToken.type)){
+        throw new Error(`Unexpected token '${nextToken.value}' passed to ',' operator`);
+      }
+
+      const thisPriority = ctx.priority+prio.comma;
+      const entry = helpers.findEntry(ctx, prio.comma+ctx.priority);
+      const lastType = ctx.tip.type;
       if (entry.right == null){
-        if (entry === context.tip){throw new Error(`Comma cannot find left hand expression`)}
-        else {throw new Error(`Critical error. Tree data is corrupted. Send input string in bug report.`)}
+        throw new Error(`Critical error. Tree data is corrupted. Send input string in bug report.`);
       }
       const child = entry.right;
       if (child.type == t.comma){
-        if (child.priority>thisPriority){parseAs.startTuple(context,entry,token)}
-        else if (child.priority==thisPriority){parseAs.extendTuple(context,entry,token)}
-        else {throw new Error(`Critical error. Impossible priority structure. Send input string in bug report.`)}
+        if (child.priority>thisPriority){parseAs.startTuple(ctx,entry,token);}
+        else if (child.priority==thisPriority){parseAs.extendTuple(ctx,entry,token);}
+        else {throw new Error(`Critical error. Impossible priority structure. Send input string in bug report.`);}
       }
-      else if ([t.ident,t.num,t.fcall].includes(child.type)){parseAs.startTuple(context,entry,token)}
-      else {throw new Error(`Critical error. Cannot find valid child for comma. Send input string in bug report.`)}
+      else {parseAs.startTuple(ctx,entry,token);}
       return;
     },
   ),
@@ -146,18 +195,26 @@ const tokenRules = [
     t.Lbracket,
     false,
     /^\(/,
-    (context, token)=> {
-      const lastType = context.tip.type;
-      if (validPrefixes.literal.includes(lastType)){ //Contents of parenthesis should evaluate to a literal (a number)
-        context.priority+=prio.bracket;
-        context.bracketStack.push('(');
+    (ctx, token)=> {
+      const nextToken = ctx.tokens[ctx.i+1];
+      let emptyCall = (nextToken.type == t.Rbracket);
+
+      if (emptyCall){}
+      else if (!tGroups.next.lits.includes(nextToken.type)){
+        throw new Error(`Left parenthesis followed by Unexpected token '${nextToken.value}'`);
       }
-      else if (lastType == t.ident){
-        context.priority+=prio.bracket;
-        context.bracketStack.push('f');
-        parseAs.fcall(context,context.tip.parent,token);
+
+      if (ctx.tip.type == t.ident){
+        ctx.priority+=prio.bracket;
+        ctx.bracketStack.push('f');
+        parseAs.fcall(ctx,token);
+      }else {
+        if (emptyCall){
+          throw new Error(`Empty brackets not allowed. Did you mean to call a function?`)
+        }
+        ctx.priority+=prio.bracket;
+        ctx.bracketStack.push('(');
       }
-      else {throw new Error(`Unexpected token '(' after token of type ${lastType}`);}
       return;
     },
   ),
@@ -165,15 +222,20 @@ const tokenRules = [
     t.Rbracket,
     false,
     /^\)/,
-    (context, token)=> {
-      const lastBracket = context.bracketStack.pop();
-      const lastType = context.tip.type;
-      if ([t.Rbracket,t.ident,t.num].includes(lastType)){
-        if (lastBracket == '('){context.priority-=prio.bracket;}
-        else if (lastBracket == 'f'){context.priority-=prio.bracket;}
-        else {throw new Error(`Tried to close ${lastBracket} with )`);}
+    (ctx, token)=> {
+
+      const nextToken = ctx.tokens[ctx.i+1];
+      if (!tGroups.next.ops.includes(nextToken.type)){
+        throw new Error(`Unexpected token '${nextToken.value}' passed to after ')'`);
       }
-      else {throw new Error(`Unexpected token '(' after token of type ${lastType}`);}
+
+      const lastBracket = ctx.bracketStack.pop();
+
+      if (lastBracket == '('){ctx.priority-=prio.bracket;}
+      else if (lastBracket == 'f'){ctx.priority-=prio.bracket;}
+      else if (lastBracket == '0'){throw new Error(`Unexpected token ')' with no matching open bracket`);}
+      else {throw new Error(`Tried to close ${lastBracket} with )`);}
+
       return;
     },
   ),
@@ -206,10 +268,10 @@ const tokenRules = [
     false,
     /^[0-9]+(\.[0-9]+)?/,
 
-    (context, token)=> {
-      const lastType = context.tip.type;
-      if (validPrefixes.literal.includes(lastType)){parseAs.decimal(context, token);}
-      else {throw new Error(`Unexpected token 'decimal' after token of type ${lastType}`);}
+    (ctx, token)=> {
+      const nextToken = ctx.tokens[ctx.i+1];
+      if (tGroups.next.ops.includes(nextToken.type)){parseAs.decimal(ctx, token);}
+      else {throw new Error(`Unexpected token '${nextToken.value}' passed after literal '${token.value}'`);}
       return;
     },
   ),
@@ -217,52 +279,53 @@ const tokenRules = [
     t.ident,
     false,
     /^[A-Za-z_]\w*/,
-    (context, token)=> {
-      const lastType = context.tip.type;
-      if (validPrefixes.literal.includes(lastType)){parseAs.ident(context, token);}
-      else {throw new Error(`Unexpected token 'ident' after token of type ${lastType}`);}
+    (ctx, token)=> {
+      const nextToken = ctx.tokens[ctx.i+1];
+      if (tGroups.next.ops.includes(nextToken.type)){parseAs.ident(ctx, token);}
+      else if (nextToken.type == t.Lbracket){parseAs.ident(ctx, token);} //Allow the bracket to parse the function call
+      else {throw new Error(`Unexpected token '${nextToken.value}' passed after literal '${token.value}'`);}
       return;
     },
   ),
   helpers.makeLexRule( 'hat',
-    t.operator,
+    t.binop,
     false,
     /^\^/,
-    helpers.makeBinaryOperatorParseRule(parseAs.exp,validPrefixes.binOp),
+    helpers.makeBinaryOperatorParseRule(parseAs.exp,tGroups.next.lits),
   ),
   helpers.makeLexRule( 'slash',
-    t.operator,
+    t.binop,
     false,
     /^\//,
-    helpers.makeBinaryOperatorParseRule(parseAs.divide,validPrefixes.binOp),
+    helpers.makeBinaryOperatorParseRule(parseAs.divide,tGroups.next.lits),
   ),
   helpers.makeLexRule( 'star',
-    t.operator,
+    t.binop,
     false,
     /^\*/,
-    helpers.makeBinaryOperatorParseRule(parseAs.mult,validPrefixes.binOp),
+    helpers.makeBinaryOperatorParseRule(parseAs.mult,tGroups.next.lits),
   ),
   helpers.makeLexRule( 'dash',
-    t.operator,
+    t.minus,
     false,
     /^\-/,
-    (context, token)=>{
-      const lastType = context.tip.type;
-      if (validPrefixes.literal.includes(lastType)){parseAs.invertSign(context,token);}
-      else if (validPrefixes.binOp.includes(lastType)){parseAs.sub(context,token);}
-      else {throw new Error(`Unexpected token '-' after token of type ${lastType}`);}
+    (ctx, token)=>{
+      const nextToken = ctx.tokens[ctx.i+1];
+      if (!tGroups.next.lits.includes(nextToken.type)){
+        throw new Error(`Unexpected token '${nextToken.value}' passed to '${token.value}' operator`);
+      }
+
+      if (tGroups.prev.ops.includes(ctx.tip.type)){parseAs.invertSign(ctx,token);}
+      else if (ctx.tip.type == t.root){parseAs.invertSign(ctx,token);}
+      else {parseAs.sub(ctx,token);}
     },
   ),
   helpers.makeLexRule( 'plus',
-    t.operator,
+    t.binop,
     false,
     /^\+/,
-    helpers.makeBinaryOperatorParseRule(parseAs.add,validPrefixes.binOp),
+    helpers.makeBinaryOperatorParseRule(parseAs.add,tGroups.next.lits),
   ),
 ]
 
-
-export {
-  tokenRules,
-};
 

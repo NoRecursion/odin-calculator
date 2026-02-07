@@ -43,8 +43,8 @@ ${' '.repeat(index+3) + '^'}`
   return msg
 }
 
-export function insertR(context,entry,node){
-  node.priority += context.priority;
+export function insertR(ctx,entry,node){
+  node.priority += ctx.priority;
   const child = entry.right;
   if (child!= null){
     node.left = child;
@@ -52,22 +52,22 @@ export function insertR(context,entry,node){
   }
   entry.right = node;
   node.parent = entry;
-  context.tip = node;
+  ctx.tip = node;
   return;
 }
 
-export function extendTip(context,node){
-  node.priority += context.priority;
-  let entry = context.tip;
+export function extendTip(ctx,node){
+  node.priority += ctx.priority;
+  let entry = ctx.tip;
   entry.right = node;
   node.parent = entry;
-  context.tip = node;
+  ctx.tip = node;
 }
 
-export function descendInsert(context, node){
-  node.priority += context.priority;
+export function descendInsert(ctx, node){
+  node.priority += ctx.priority;
 
-  let entry = context.entry;
+  let entry = ctx.root;
   while (entry.right!=null){
       if (entry.right.priority>=node.priority){break;}
       entry = entry.right
@@ -79,12 +79,12 @@ export function descendInsert(context, node){
   }
   entry.right = node;
   node.parent = entry;
-  context.tip = node;
+  ctx.tip = node;
   return;
 }
 
-export function findEntry(context, priority){
-  let entry = context.entry;
+export function findEntry(ctx, priority){
+  let entry = ctx.root;
   while (entry.right!=null){
       if (entry.right.priority>=priority){break;}
       entry = entry.right
@@ -107,14 +107,13 @@ export function makeLexRule(name,type,ignore,regex,parseRule){
   }
 }
 
-export function makeBinaryOperatorParseRule(parser,validPrefixes){
-  const func= (context, token)=> {
-    const symbol = token.value;
-
-    const lastType = context.tip.type;
-    if (validPrefixes.includes(lastType)) {parser(context, token);}
-    else {throw new Error(`Unexpected token ${symbol} after token of type ${lastType}`);}
-    return;
+export function makeBinaryOperatorParseRule(parser,validSuffixes){
+  const binopParser= (ctx, token)=> {
+    const nextToken = ctx.tokens[ctx.i+1];
+    if (!validSuffixes.includes(nextToken.type)){
+      throw new Error(`Unexpected token '${nextToken.value}' passed to '${token.value}' operator`);
+    }
+    else {parser(ctx,token);}
   }
-  return func;
+  return binopParser;
 }
