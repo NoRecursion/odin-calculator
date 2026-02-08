@@ -22,25 +22,29 @@ export function makeTreeNode(obj,priority,token){
   return node
 }
 
-export class LexerError extends Error {
-  constructor(message) {
-    super(message);
-    /*
-    this.name = 'LexerError';
-    this.index = index;
-    this.text = text;
-    */
-  }
-}
-
-export function makeLexErrorMsg(input,index){
-  let msg =
-`Unexpected token found at index ${index}
-
-${'>> ' + input}
+function indexErrorMsg(text,index){
+  let msg =`
+${'>> ' + text}
 ${' '.repeat(index+3) + '^'}`
 
   return msg
+}
+
+export class InterpreterError extends Error {
+  constructor(message, n) {
+    super(message);
+  }
+
+  static lexerUnexpectedToken(text,index){
+    const errMessage = `Lexer encountered unexpected character at index ${index}\n` + indexErrorMsg(text,index);
+    return new InterpreterError(errMessage);
+    
+  }
+
+  static parserError(ctx,token,message){
+    const errMessage = message + `\n` + indexErrorMsg(ctx.text,token.position);
+    return new InterpreterError(errMessage);
+  }
 }
 
 export function insertR(ctx,entry,node){
@@ -111,7 +115,8 @@ export function makeBinaryOperatorParseRule(parser,validSuffixes){
   const binopParser= (ctx, token)=> {
     const nextToken = ctx.tokens[ctx.i+1];
     if (!validSuffixes.includes(nextToken.type)){
-      throw new Error(`Unexpected token '${nextToken.value}' passed to '${token.value}' operator`);
+      throw InterpreterError.parserError(ctx,nextToken,
+        `Parser encountered unexpected token '${nextToken.value}' passed to '${token.value}' operator`);
     }
     else {parser(ctx,token);}
   }

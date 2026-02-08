@@ -32,7 +32,7 @@ function lexer(text){
     }
     
     if(!tokenFoundFlag){
-      throw new helpers.LexerError(helpers.makeLexErrorMsg(text,i));
+      throw helpers.InterpreterError.lexerUnexpectedToken(text,i);
     }
   }
 
@@ -41,7 +41,7 @@ function lexer(text){
   return tokenList;
 }
 
-function parser(tokenList){
+function parser(tokenList,text){
   const rootToken= helpers.makeToken(null,null,specialTokens.root);
   const root= helpers.makeTreeNode("root",0,rootToken);
 
@@ -50,8 +50,9 @@ function parser(tokenList){
     tip: root,
     tokens: tokenList,
     i: 0,
-    bracketStack: ['0'],
+    bracketStack: [null],
     priority: 0,
+    text:text,
   }
 
   for (ctx.i; ctx.i<tokenList.length; ctx.i++){
@@ -59,6 +60,11 @@ function parser(tokenList){
     token.parseRule(ctx,token);
   }
   
+  const lastBracket = ctx.bracketStack.pop();
+  if (lastBracket != null){
+    throw helpers.InterpreterError.parserError(ctx,lastBracket,`Open bracket with no matching closing bracket`);
+  }
+
   return ctx.root;
 }
 

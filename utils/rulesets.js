@@ -122,7 +122,8 @@ export const specialTokens = {
       (ctx, token)=> {
         const nextToken = ctx.tokens[ctx.i+1];
         if (!tGroups.next.lits.includes(nextToken.type)){
-          throw new Error(`Unexpected token '${nextToken.value}' at start of expression`);
+          throw helpers.InterpreterError.parserError(ctx,nextToken,
+            `Parser encountered unexpected token '${nextToken.value}' at start of expression`);
         }
         return;
       }
@@ -172,20 +173,25 @@ export const tokenRules = [
     (ctx, token)=> {
       const nextToken = ctx.tokens[ctx.i+1];
       if (!tGroups.next.lits.includes(nextToken.type)){
-        throw new Error(`Unexpected token '${nextToken.value}' passed to ',' operator`);
+        throw helpers.InterpreterError.parserError(ctx,nextToken,
+          `Parser encountered unexpected token '${nextToken.value}' passed to ',' operator`);
       }
 
       const thisPriority = ctx.priority+prio.comma;
       const entry = helpers.findEntry(ctx, prio.comma+ctx.priority);
       const lastType = ctx.tip.type;
       if (entry.right == null){
-        throw new Error(`Critical error. Tree data is corrupted. Send input string in bug report.`);
+        throw helpers.InterpreterError.parserError(ctx,token,
+          `Critical parser error. Tree data is corrupted. Send input string in bug report.`);
       }
       const child = entry.right;
       if (child.type == t.comma){
         if (child.priority>thisPriority){parseAs.startTuple(ctx,entry,token);}
         else if (child.priority==thisPriority){parseAs.extendTuple(ctx,entry,token);}
-        else {throw new Error(`Critical error. Impossible priority structure. Send input string in bug report.`);}
+        else {
+          throw helpers.InterpreterError.parserError(ctx,token,
+            `Critical parser error. Impossible priority structure. Send input string in bug report.`);
+        }
       }
       else {parseAs.startTuple(ctx,entry,token);}
       return;
@@ -201,20 +207,22 @@ export const tokenRules = [
 
       if (emptyCall){}
       else if (!tGroups.next.lits.includes(nextToken.type)){
-        throw new Error(`Left parenthesis followed by Unexpected token '${nextToken.value}'`);
+        throw helpers.InterpreterError.parserError(ctx,nextToken,
+          `Parser: '(' followed by unexpected token '${nextToken.value}'`);
       }
 
       if (ctx.tip.type == t.ident){
         ctx.priority+=prio.bracket;
-        ctx.bracketStack.push('f');
         parseAs.fcall(ctx,token);
       }else {
         if (emptyCall){
-          throw new Error(`Empty brackets not allowed. Did you mean to call a function?`)
+          throw helpers.InterpreterError.parserError(ctx,nextToken,
+            `Parser encountered empty brackets. Did you mean to call a function?`)
         }
         ctx.priority+=prio.bracket;
-        ctx.bracketStack.push('(');
+  
       }
+      ctx.bracketStack.push(token);
       return;
     },
   ),
@@ -226,15 +234,20 @@ export const tokenRules = [
 
       const nextToken = ctx.tokens[ctx.i+1];
       if (!tGroups.next.ops.includes(nextToken.type)){
-        throw new Error(`Unexpected token '${nextToken.value}' passed to after ')'`);
+        throw helpers.InterpreterError.parserError(ctx,nextToken,
+          `Parser encountered unexpected token '${nextToken.value}' passed to after ')'`);
       }
 
       const lastBracket = ctx.bracketStack.pop();
-
-      if (lastBracket == '('){ctx.priority-=prio.bracket;}
-      else if (lastBracket == 'f'){ctx.priority-=prio.bracket;}
-      else if (lastBracket == '0'){throw new Error(`Unexpected token ')' with no matching open bracket`);}
-      else {throw new Error(`Tried to close ${lastBracket} with )`);}
+      if (lastBracket == null){
+        throw helpers.InterpreterError.parserError(ctx,token,
+          `Parser encountered ')' with no matching open bracket`);
+      }
+      else if (lastBracket.value == '('){ctx.priority-=prio.bracket;}
+      else {
+        throw helpers.InterpreterError.parserError(ctx,token,
+          `Parser: Tried to close ${lastBracket} with )`);
+      }
 
       return;
     },
@@ -271,7 +284,10 @@ export const tokenRules = [
     (ctx, token)=> {
       const nextToken = ctx.tokens[ctx.i+1];
       if (tGroups.next.ops.includes(nextToken.type)){parseAs.decimal(ctx, token);}
-      else {throw new Error(`Unexpected token '${nextToken.value}' passed after literal '${token.value}'`);}
+      else {
+        throw helpers.InterpreterError.parserError(ctx,nextToken,
+          `Parser encountered unexpected token '${nextToken.value}' passed after literal '${token.value}'`);
+      }
       return;
     },
   ),
@@ -283,7 +299,10 @@ export const tokenRules = [
       const nextToken = ctx.tokens[ctx.i+1];
       if (tGroups.next.ops.includes(nextToken.type)){parseAs.ident(ctx, token);}
       else if (nextToken.type == t.Lbracket){parseAs.ident(ctx, token);} //Allow the bracket to parse the function call
-      else {throw new Error(`Unexpected token '${nextToken.value}' passed after literal '${token.value}'`);}
+      else {
+        throw helpers.InterpreterError.parserError(ctx,nextToken,
+          `Parser encountered unexpected token '${nextToken.value}' passed after literal '${token.value}'`);
+      }
       return;
     },
   ),
@@ -312,7 +331,8 @@ export const tokenRules = [
     (ctx, token)=>{
       const nextToken = ctx.tokens[ctx.i+1];
       if (!tGroups.next.lits.includes(nextToken.type)){
-        throw new Error(`Unexpected token '${nextToken.value}' passed to '${token.value}' operator`);
+        throw helpers.InterpreterError.parserError(ctx,nextToken,
+          `Parser encountered unexpected token '${nextToken.value}' passed to '${token.value}' operator`);
       }
 
       if (tGroups.prev.ops.includes(ctx.tip.type)){parseAs.invertSign(ctx,token);}

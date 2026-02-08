@@ -4,9 +4,9 @@ import * as interpreter from '../interpreter.js';
 import { tokenRules } from '../rulesets.js';
 import * as debug from './debug_tools.js'
 
-
-let lex = interpreter.lexer("+1+2--3*4/5")
-let par = interpreter.parser(lex)
+const text = "1**5";
+let lex = interpreter.lexer(text)
+let par = interpreter.parser(lex,text)
 
 //console.log([par].map(node=>node.obj))
 //console.log(par)

@@ -106,12 +106,12 @@ describe('Throws errors correctly', () => {
       interpreter.lexer('&');
     }
     const errorMsg = 
-`Unexpected token found at index 0
+`Lexer encountered unexpected character at index 0
 
 >> &
    ^`;
 
-    expect(erroneousCall).toThrow(new helpers.LexerError(errorMsg));
+    expect(erroneousCall).toThrow(new helpers.InterpreterError(errorMsg));
   });
   test('simple whitespaces', () => {
 
@@ -121,11 +121,11 @@ describe('Throws errors correctly', () => {
       interpreter.lexer(preString+'@ lagrange++');
     }
     const errorMsg = 
-`Unexpected token found at index ${preString.length}
+`Lexer encountered unexpected character at index ${preString.length}
 
 >> 123+[pi/sin(12)] A4 ^^ 2[ /*asd@*/ sin(12)@ lagrange++
                                              ^`;
 
-    expect(erroneousCall).toThrow(new helpers.LexerError(errorMsg));
+    expect(erroneousCall).toThrow(new helpers.InterpreterError(errorMsg));
   });
 });
