@@ -211,14 +211,14 @@ export const tokenRules = [
       if (emptyCall){}
       else if (!tGroups.next.lits.includes(nextToken.type)){
         throw helpers.InterpreterError.parserError(ctx,nextToken,
-          `Parser: '(' followed by unexpected token '${nextToken.value}'`);
+          `Parser encountered unexpected token '${nextToken.value}' passed after '('`);
       }
 
       if (ctx.tip.type == t.ident){
         parseAs.fcall(ctx,token);
       }else {
         if (emptyCall){
-          throw helpers.InterpreterError.parserError(ctx,nextToken,
+          throw helpers.InterpreterError.parserError(ctx,token,
             `Parser encountered empty brackets. Did you mean to call a function?`)
         }
       }

@@ -102,16 +102,186 @@ describe('Parses correct expressions', () => {
     expect(parseOutput).toStrictEqual(expectedOutput);
   }); 
 });
-/*
-describe('Errors correctly', () => {
 
-  test('Parses simple expression', () => {
-    const text = "b+5";
-    const expectedOutput = [ [ 'root' ], [ null, opFuncs.add ], [ 'b', 5 ]];
 
-    const parseOutput = debug.parseToFields(text, node=>node.obj);
-    expect(parseOutput).toStrictEqual(expectedOutput);
+
+describe('Throws errors correctly', () => {
+  test('Empty expression', () => {
+
+    const text = "";
+
+    function erroneousCall() {
+      interpreter.parser(interpreter.lexer(text),text);
+    }
+    const errorMsg = 
+`Parser encountered empty input. Please provide an expression.
+
+>> 
+   ^`;
+
+    expect(erroneousCall).toThrow(new helpers.InterpreterError(errorMsg));
   });
 
+  test('Illegal start', () => {
+
+    const text = "*3";
+
+    function erroneousCall() {
+      interpreter.parser(interpreter.lexer(text),text);
+    }
+    const errorMsg = 
+`Parser encountered unexpected token '*' at start of expression
+
+>> *3
+   ^`;
+
+    expect(erroneousCall).toThrow(new helpers.InterpreterError(errorMsg));
+  });
+
+  test('Consecutive operators', () => {
+
+      const text = "1*+2";
+
+      function erroneousCall() {
+        interpreter.parser(interpreter.lexer(text),text);
+      }
+      const errorMsg = 
+`Parser encountered unexpected token '+' passed to '*' operator
+
+>> 1*+2
+     ^`;
+
+      expect(erroneousCall).toThrow(new helpers.InterpreterError(errorMsg));
+    });
+
+  test('Consecutive literals', () => {
+
+    const text = "1+2 C";
+
+    function erroneousCall() {
+      interpreter.parser(interpreter.lexer(text),text);
+    }
+    const errorMsg = 
+`Parser encountered unexpected token 'C' passed after literal '2'
+
+>> 1+2 C
+       ^`;
+
+    expect(erroneousCall).toThrow(new helpers.InterpreterError(errorMsg));
+  });
+
+  test('Missing open parenthesis', () => {
+
+    const text = "1+(2-4";
+
+    function erroneousCall() {
+      interpreter.parser(interpreter.lexer(text),text);
+    }
+    const errorMsg = 
+`Parser found open bracket with no matching closing bracket
+
+>> 1+(2-4
+     ^`;
+
+    expect(erroneousCall).toThrow(new helpers.InterpreterError(errorMsg));
+  });
+
+  test('Missing open parenthesis', () => {
+
+    const text = "(1+2)-4)";
+
+    function erroneousCall() {
+      interpreter.parser(interpreter.lexer(text),text);
+    }
+    const errorMsg = 
+`Parser encountered ')' with no matching open bracket
+
+>> (1+2)-4)
+          ^`;
+
+    expect(erroneousCall).toThrow(new helpers.InterpreterError(errorMsg));
+  });
+
+  test('Open parenthesis followed by operator', () => {
+
+    const text = "1+(*2-4)";
+
+    function erroneousCall() {
+      interpreter.parser(interpreter.lexer(text),text);
+    }
+    const errorMsg = 
+`Parser encountered unexpected token '*' passed after '('
+
+>> 1+(*2-4)
+      ^`;
+
+    expect(erroneousCall).toThrow(new helpers.InterpreterError(errorMsg));
+  });
+
+  test('Close parenthesis followed by literal', () => {
+
+    const text = "1+(2-4)str";
+
+    function erroneousCall() {
+      interpreter.parser(interpreter.lexer(text),text);
+    }
+    const errorMsg = 
+`Parser encountered unexpected token 'str' passed to after ')'
+
+>> 1+(2-4)str
+          ^`;
+
+    expect(erroneousCall).toThrow(new helpers.InterpreterError(errorMsg));
+  });
+
+  test('Close parenthesis followed by open parenthesis ")("', () => {
+
+    const text = "1+(2-4)(2)";
+
+    function erroneousCall() {
+      interpreter.parser(interpreter.lexer(text),text);
+    }
+    const errorMsg = 
+`Parser encountered unexpected token '(' passed to after ')'
+
+>> 1+(2-4)(2)
+          ^`;
+
+    expect(erroneousCall).toThrow(new helpers.InterpreterError(errorMsg));
+  });
+
+  test('Empty brackets', () => {
+
+    const text = "1+(  )-2";
+
+    function erroneousCall() {
+      interpreter.parser(interpreter.lexer(text),text);
+    }
+    const errorMsg = 
+`Parser encountered empty brackets. Did you mean to call a function?
+
+>> 1+(  )-2
+     ^`;
+
+    expect(erroneousCall).toThrow(new helpers.InterpreterError(errorMsg));
+  });
+
+  test('double comma', () => {
+
+    const text = "(2,,3)";
+
+    function erroneousCall() {
+      interpreter.parser(interpreter.lexer(text),text);
+    }
+    const errorMsg = 
+`Parser encountered unexpected token ',' passed to ',' operator
+
+>> (2,,3)
+      ^`;
+
+    expect(erroneousCall).toThrow(new helpers.InterpreterError(errorMsg));
+  });
 });
-*/
+
+
+

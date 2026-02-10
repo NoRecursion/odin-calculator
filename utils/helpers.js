@@ -31,7 +31,7 @@ ${' '.repeat(index+3) + '^'}`
 }
 
 export class InterpreterError extends Error {
-  constructor(message, n) {
+  constructor(message) {
     super(message);
   }
 

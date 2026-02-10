@@ -62,7 +62,7 @@ function parser(tokenList,text){
   
   const lastBracket = ctx.bracketStack.pop();
   if (lastBracket != null){
-    throw helpers.InterpreterError.parserError(ctx,lastBracket,`Open bracket with no matching closing bracket`);
+    throw helpers.InterpreterError.parserError(ctx,lastBracket,`Parser found open bracket with no matching closing bracket`);
   }
 
   return ctx.root;
