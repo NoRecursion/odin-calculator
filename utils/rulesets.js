@@ -1,6 +1,6 @@
 import * as helpers from './helpers.js'
 
-const opFuncs ={ //redo these maybe
+export const opFuncs ={ //redo these maybe
   exp:(l,r)=>{return l^r;},
   mult:(l,r)=>{return l*r;},
   divide:(l,r)=>{return l/r;},
@@ -14,8 +14,8 @@ const opFuncs ={ //redo these maybe
 
 const prio={ //priority
   literal: 20,
-  fcall: 18,
   bracket: 18,
+  fcall: 18,
   exp: 8,
   mult: 6,
   add: 4,
@@ -121,7 +121,11 @@ export const specialTokens = {
       /^[^.]/,
       (ctx, token)=> {
         const nextToken = ctx.tokens[ctx.i+1];
-        if (!tGroups.next.lits.includes(nextToken.type)){
+        if (nextToken.type == t.EOE){ 
+          throw helpers.InterpreterError.parserError(ctx,nextToken,
+            `Parser encountered empty input. Please provide an expression.`);
+        }
+        else if (!tGroups.next.lits.includes(nextToken.type)){
           throw helpers.InterpreterError.parserError(ctx,nextToken,
             `Parser encountered unexpected token '${nextToken.value}' at start of expression`);
         }
@@ -178,8 +182,7 @@ export const tokenRules = [
       }
 
       const thisPriority = ctx.priority+prio.comma;
-      const entry = helpers.findEntry(ctx, prio.comma+ctx.priority);
-      const lastType = ctx.tip.type;
+      const entry = helpers.findEntry(ctx, thisPriority);
       if (entry.right == null){
         throw helpers.InterpreterError.parserError(ctx,token,
           `Critical parser error. Tree data is corrupted. Send input string in bug report.`);
@@ -212,17 +215,15 @@ export const tokenRules = [
       }
 
       if (ctx.tip.type == t.ident){
-        ctx.priority+=prio.bracket;
         parseAs.fcall(ctx,token);
       }else {
         if (emptyCall){
           throw helpers.InterpreterError.parserError(ctx,nextToken,
             `Parser encountered empty brackets. Did you mean to call a function?`)
         }
-        ctx.priority+=prio.bracket;
-  
       }
       ctx.bracketStack.push(token);
+      ctx.priority+=prio.bracket;
       return;
     },
   ),

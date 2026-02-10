@@ -4,9 +4,7 @@ import * as interpreter from '../interpreter.js';
 import { tokenRules } from '../rulesets.js';
 import * as debug from './debug_tools.js'
 
-const text = "1**5";
-let lex = interpreter.lexer(text)
-let par = interpreter.parser(lex,text)
+const text = "1^((3+4)*5/(6-7))";
 
 //console.log([par].map(node=>node.obj))
 //console.log(par)
@@ -14,6 +12,6 @@ let par = interpreter.parser(lex,text)
 //debug.printTreeObj(par)
 //console.log(tokenRules)\
 
-console.log(debug.listTreeObj(par))
+console.log(debug.parseToFields(text, node=>node.obj))
 
 //console.log(lex)

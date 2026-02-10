@@ -1,15 +1,117 @@
 import * as interpreter from '../interpreter.js'
 import * as helpers from '../helpers.js'
+import * as debug from './debug_tools.js'
+import { opFuncs } from '../rulesets.js';
 
-function logTestLexer(inp, func){
-  console.log(`testing: ${inp}`);
-  console.log(func(inp));
-  return;
-}
 
-describe('Recognizes tokens', () => {
+describe('Parses correct expressions', () => {
 
-  test('recognises ident', () => {
-    expect(1).toStrictEqual(1);
+  test('Parses simple expression', () => {
+    const text = "b+5";
+    const expectedOutput = [ [ 'root' ], [ null, opFuncs.add ], [ 'b', 5 ]];
+
+    const parseOutput = debug.parseToFields(text, node=>node.obj);
+    expect(parseOutput).toStrictEqual(expectedOutput);
   });
+
+  test('Orders operations correctly', () => {
+    const text = "a-2^3+d/5*f";
+    const expectedOutput = [ 
+      [ 'root' ], 
+      [ null, opFuncs.add ],                      //  a-2^3       [+]  d/5*f
+      [ opFuncs.sub, opFuncs.mult ],              //  a [-] 2^3    #   d/5     [*] f
+      [ 'a', opFuncs.exp, opFuncs.divide, 'f' ],  // [a] # 2 [^] 3 #   d [/] 5  # [f]
+      [ null, null, 2, 3, 'd', 5, null, null ] 
+    ];
+
+    const parseOutput = debug.parseToFields(text, node=>node.obj);
+    expect(parseOutput).toStrictEqual(expectedOutput);
+  });
+
+  test('Handles unary minus', () => {
+    const text = "-2^3+4^-5";
+    const expectedOutput = [ 
+      [ 'root' ], 
+      [ null, opFuncs.add ],                          //  -2^3     [+]  4^-5
+      [ opFuncs.invertSign, opFuncs.exp ],            //  [-] 2^3   #   4 [^] -5
+      [ null, opFuncs.exp, 4, opFuncs.invertSign ],   //   2 [^] 3  #  [4] # [-] 5
+      [ 2, 3, null, null, null, 5 ]
+    ];
+
+    const parseOutput = debug.parseToFields(text, node=>node.obj);
+    expect(parseOutput).toStrictEqual(expectedOutput);
+  });
+
+  test('Handles nested minuses', () => {
+    const text = "-1----2";
+    const expectedOutput = [ 
+      [ 'root' ], 
+      [ null, opFuncs.sub ],                        //  -1    [-] ---2
+      [ opFuncs.invertSign, opFuncs.invertSign ],   //  [-] 1  # -- [-] 2
+      [ null, 1, null, opFuncs.invertSign ],        //     [1] # - [-] 2
+      [ null, null, null, opFuncs.invertSign ],     //  [-] 2
+      [ null, 2 ]
+    ];
+
+    const parseOutput = debug.parseToFields(text, node=>node.obj);
+    expect(parseOutput).toStrictEqual(expectedOutput);
+  });
+
+  test('Handles nested parentheses', () => {
+    const text = "1^((3+4)*5/(6-7))";
+    const expectedOutput = [ 
+      [ 'root' ], 
+      [ null, opFuncs.exp ],                          //  1 [^] ((3+4)*5/(6-7))
+      [ 1 , opFuncs.divide ],                         // [1] # (3+4)*5 [/] 6-7
+      [ null, null, opFuncs.mult, opFuncs.sub ],      // 3+4 [*] 5 # 6 [-] 7
+      [ opFuncs.add, 5, 6, 7 ],                       // 3 [+] 4 # [5] # [6] # [7]
+      [3, 4, null, null, null, null, null, null ] 
+    ];
+
+    const parseOutput = debug.parseToFields(text, node=>node.obj);
+    expect(parseOutput).toStrictEqual(expectedOutput);
+  });
+
+  test('Recognises ident', () => {
+    const text = "(1,(2,3,(4,5)),6)";
+    const expectedOutput = [ 
+      [ 'root' ],
+      [ null, opFuncs.extendTuple ],                                    //  (1,(2,3,(4,5)) [,] 6)
+      [ opFuncs.startTuple, 6 ],                                        //  (1 [,] (2,3,(4,5)) # [6]
+      [ 1, opFuncs.extendTuple, null, null ],                           //  [1] #  (2,3 [,] (4,5))
+      [ null, null, opFuncs.startTuple, opFuncs.startTuple ],           //  2 [,] 3 #  (4 [,] 5)
+      [ 2, 3, 4, 5 ]
+    ];
+
+    const parseOutput = debug.parseToFields(text, node=>node.obj);
+    expect(parseOutput).toStrictEqual(expectedOutput);
+  });
+
+  test('Handles function calls', () => {
+    const text = "f()+g(a)+h(1,2,3)";
+    const expectedOutput = [
+      [ 'root' ],
+      [ null, opFuncs.add ],                                            //  f() + g(a) [+] h(1,2,3)
+      [ opFuncs.add, opFuncs.fcall ],                                   //  f() [+] g(a) # h [(] 1,2,3)
+      [ opFuncs.fcall,  opFuncs.fcall, "h", opFuncs.extendTuple ],      //  f [(] ) # g [(] a ) # [h] # 1,2 [,] 3 )
+      [ "f", null, "g", "a", null, null, opFuncs.startTuple, 3 ],       // [f] # [g] # [a] # 1 [,] 2 # [3]
+      [ null, null, null, null, null, null, 1 ,2, null, null ]
+    ];
+
+    const parseOutput = debug.parseToFields(text, node=>node.obj);
+    expect(parseOutput).toStrictEqual(expectedOutput);
+  }); 
 });
+/*
+describe('Errors correctly', () => {
+
+  test('Parses simple expression', () => {
+    const text = "b+5";
+    const expectedOutput = [ [ 'root' ], [ null, opFuncs.add ], [ 'b', 5 ]];
+
+    const parseOutput = debug.parseToFields(text, node=>node.obj);
+    expect(parseOutput).toStrictEqual(expectedOutput);
+  });
+
+});
+*/
