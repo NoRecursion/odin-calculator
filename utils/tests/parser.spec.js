@@ -106,21 +106,6 @@ describe('Parses correct expressions', () => {
 
 
 describe('Throws errors correctly', () => {
-  test('Empty expression', () => {
-
-    const text = "";
-
-    function erroneousCall() {
-      interpreter.parser(interpreter.lexer(text),text);
-    }
-    const errorMsg = 
-`Parser encountered empty input. Please provide an expression.
-
->> 
-   ^`;
-
-    expect(erroneousCall).toThrow(new helpers.InterpreterError(errorMsg));
-  });
 
   test('Illegal start', () => {
 

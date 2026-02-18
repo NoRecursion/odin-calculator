@@ -3,7 +3,7 @@ import * as interpreter from '../interpreter.js';
 import { tokenRules } from '../rulesets.js';
 import * as debug from './debug_tools.js'
 
-const text = "$";
+const text = "rand(2)";
 
 
 //console.log(interpreter.parser(interpreter.lexer(text),text))

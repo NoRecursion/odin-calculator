@@ -102,7 +102,12 @@ export function evalNode(node,settings,text){
       try{
         node.evalValue = l(r,settings);
       }catch(e){
-        throw helpers.InterpreterError.evaluatorError(node,text,e.message)
+        if(e instanceof helpers.InterpreterError){
+          throw helpers.InterpreterError.evaluatorError(node,text,e.message)
+        }else{ 
+          console.error(helpers.InterpreterError.evaluatorError(node,text,"Unexpected runtime error occured"))
+          throw e;
+        }
       }
       break;
     case t.comma:
@@ -112,7 +117,7 @@ export function evalNode(node,settings,text){
     case t.minus:
     case t.factorial:
       if (Array.isArray(l) ||Array.isArray(r)) {
-        throw helpers.InterpreterError.evaluatorError(node,text,`the '${node.token.value}' operator does not accept tuples`)
+        throw helpers.InterpreterError.evaluatorError(node,text,`The '${node.token.value}' operator does not accept tuples`)
       }
       node.evalValue = node.obj(l,r)
       break;

@@ -1,8 +1,8 @@
-import { factorial } from "./helpers.js";
+import { factorial, InterpreterError } from "./helpers.js";
 
 function makeNullaryFunc(mather,name){
     const func = (args, settings) =>{
-        if (typeof args != "number") {throw new Error(`${name} takes no argument`);}
+        if (typeof args != null) {throw new InterpreterError(`The ${name} function takes no arguments`);}
         return mather();
     }
     return func;
@@ -10,7 +10,7 @@ function makeNullaryFunc(mather,name){
 
 function makeUnaryFunc(mather,name){
     const func = (args, settings) =>{
-        if (typeof args != "number") {throw new Error(`${name} takes 1 argument`);}
+        if (typeof args != "number") {throw new InterpreterError(`The ${name} function takes 1 argument`);}
         return mather(args);
     }
     return func;
@@ -18,7 +18,7 @@ function makeUnaryFunc(mather,name){
 
 function makeBinaryFunc(mather,name){
     const func = (args, settings) =>{
-        if (!Array.isArray(args) || args.length != 2) {throw new Error(`${name} takes 2 arguments`);}
+        if (!Array.isArray(args) || args.length != 2) {throw new InterpreterError(`The ${name} function takes 2 arguments`);}
         return mather(args[0],args[1]);
     }
     return func;
@@ -27,7 +27,7 @@ function makeBinaryFunc(mather,name){
 
 function makeForwardTrigFunc(mather,name){
     const func = (args, settings) =>{
-        if (typeof args != "number") {throw new Error(`${name} takes 1 argument`);}
+        if (typeof args != "number") {throw new InterpreterError(`The ${name} function takes 1 argument`);}
         let angleUnit
 
         if (settings == null){angleUnit = "rad";}
@@ -46,7 +46,7 @@ function makeForwardTrigFunc(mather,name){
 
 function makeInverseTrigFunc(mather,name){
     const func = (args, settings) =>{
-        if (typeof args != "number") {throw new Error(`${name} takes 1 argument`);}
+        if (typeof args != "number") {throw new InterpreterError(`The ${name} function takes 1 argument`);}
         let angleUnit
         let correctionFactor
 
@@ -75,31 +75,33 @@ export let funcs = {
     "ln":makeUnaryFunc(Math.log,"ln"),
     "log":
         (args, settings) =>{
-            if (args == null) {throw new Error("log takes at least 1 argument");}
+            if (args == null) {throw new InterpreterError("The log function takes at least 1 argument");}
             else if (typeof args == "number") {return Math.log(args)/Math.log(10);}
             else if (args.length <= 2) {return Math.log(args[0])/Math.log(args[1]);}
-            else {throw new Error("log takes at most 2 arguments");}
+            else {throw new InterpreterError("The log function takes at most 2 arguments");}
         },
     "sum":
         (args, settings) =>{
-            if (!Array.isArray(args)) {throw new Error("sum expects 2 or more arguments");}
+            if (!Array.isArray(args)) {throw new InterpreterError("The sum function expects 2 or more arguments");}
             return args.reduce((acc,cur)=>acc+cur);
         },
     "npr": makeBinaryFunc((n,r)=>factorial(n)/factorial(n-r),"nCr"),
     "ncr": makeBinaryFunc((n,r)=>factorial(n)/(factorial(n-r)*factorial(r)),"nCr"),
+
     "sqrt": makeUnaryFunc(Math.sqrt,"sqrt"),
+
     "sin": makeForwardTrigFunc(Math.sin,"sin"),
     "cos": makeForwardTrigFunc(Math.cos,"cos"),
     "tan": makeForwardTrigFunc(Math.tan,"tan"),
     "sec": makeForwardTrigFunc((num)=>1/Math.cos(num),"sec"),
     "csc": makeForwardTrigFunc((num)=>1/Math.sin(num),"csc"),
-    "ctn": makeForwardTrigFunc((num)=>1/Math.tan(num),"ctn"),
+    "cot": makeForwardTrigFunc((num)=>1/Math.tan(num),"cot"),
     "asin": makeInverseTrigFunc(Math.asin,"asin"),
     "acos": makeInverseTrigFunc(Math.acos,"acos"),
     "atan": makeInverseTrigFunc(Math.atan,"atan"),
     "asec": makeInverseTrigFunc((num)=>Math.acos(1/num),"asec"),
     "acsc": makeInverseTrigFunc((num)=>Math.asin(1/num),"acsc"),
-    "actn": makeInverseTrigFunc((num)=>Math.actn(1/num),"actn"),
+    "acot": makeInverseTrigFunc((num)=>Math.atan(1/num),"acot"),
 }
 
 export let nums = {
