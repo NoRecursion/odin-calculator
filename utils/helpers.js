@@ -1,3 +1,15 @@
+export function factorial(n){
+  if (n<0) {return Infinity}
+  if (n==Infinity) {return Infinity}
+  if (n==0) {return 1;}
+
+  let total = 1;
+  for(let i = 1; i<=n; i++){
+    total *= i;
+  }
+  return total;
+}
+
 export function makeToken(value, position, rule){
   const token = {
     value: value,
@@ -13,6 +25,8 @@ export function makeTreeNode(obj,priority,token){
   const node = {
     parent: null,
     obj: obj,
+    evalStep: 0,  // 0: unvisited, 1: evaluating left branch, 2: evaluatin right branch, 3: evaluated
+    evalValue: null,
     priority: priority,
     type: token.type,
     token: token,
@@ -31,19 +45,26 @@ ${' '.repeat(index+3) + '^'}`
 }
 
 export class InterpreterError extends Error {
-  constructor(message) {
+  constructor(message,phase) {
     super(message);
+    this.name = "InterpreterError";
+    this.phase = phase;
   }
 
   static lexerUnexpectedToken(text,index){
     const errMessage = `Lexer encountered unexpected character at index ${index}\n` + indexErrorMsg(text,index);
-    return new InterpreterError(errMessage);
+    return new InterpreterError(errMessage,"lexer");
     
   }
 
   static parserError(ctx,token,message){
     const errMessage = message + `\n` + indexErrorMsg(ctx.text,token.position);
-    return new InterpreterError(errMessage);
+    return new InterpreterError(errMessage,"parser");
+  }
+
+  static evaluatorError(node,text,message){
+    const errMessage = message + `\n` + indexErrorMsg(text,node.token.position);
+    return new InterpreterError(errMessage,"evaluator");
   }
 }
 

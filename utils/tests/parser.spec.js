@@ -15,13 +15,13 @@ describe('Parses correct expressions', () => {
   });
 
   test('Orders operations correctly', () => {
-    const text = "a-2^3+d/5*f";
+    const text = "a-2^3+d/5*f!";
     const expectedOutput = [ 
       [ 'root' ], 
-      [ null, opFuncs.add ],                      //  a-2^3       [+]  d/5*f
-      [ opFuncs.sub, opFuncs.mult ],              //  a [-] 2^3    #   d/5     [*] f
-      [ 'a', opFuncs.exp, opFuncs.divide, 'f' ],  // [a] # 2 [^] 3 #   d [/] 5  # [f]
-      [ null, null, 2, 3, 'd', 5, null, null ] 
+      [ null, opFuncs.add ],                      //  a-2^3       [+]  d/5*f!
+      [ opFuncs.sub, opFuncs.mult ],              //  a [-] 2^3    #   d/5     [*] f!
+      [ 'a', opFuncs.exp, opFuncs.divide, opFuncs.factorial ],  // [a] # 2 [^] 3 #   d [/] 5  # f [!]
+      [ null, null, 2, 3, 'd', 5, 'f', null ] 
     ];
 
     const parseOutput = debug.parseToFields(text, node=>node.obj);

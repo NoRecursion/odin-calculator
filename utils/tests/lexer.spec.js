@@ -26,8 +26,8 @@ describe('Recognizes tokens', () => {
     expect(lexOutput).toStrictEqual(expectedOutput);
   });
   test('Operators and brackets', () => {
-    const lexInput = "+-*/^()[]{}";
-    const expectedOutput = ['SOE','+','-','*','/','^','(', ')','[',']','{','}','EOE'];
+    const lexInput = "+-*/^!()[]{}";
+    const expectedOutput = ['SOE','+','-','*','/','^','!','(', ')','[',']','{','}','EOE'];
 
     const lexOutput = debug.lexToField(lexInput,'value');
     expect(lexOutput).toStrictEqual(expectedOutput);
@@ -64,8 +64,8 @@ describe('Recognizes token name', () => {
     expect(lexOutput).toStrictEqual(expectedOutput);
   });
   test('Operators and brackets', () => {
-    const lexInput = "+-*/^()[]{}";
-    const expectedOutput = ['SOE','plus','dash','star','slash','hat','Lparenthesis',
+    const lexInput = "+-*/^!()[]{}";
+    const expectedOutput = ['SOE','plus','dash','star','slash','hat','factorial','Lparenthesis',
                             'Rparenthesis','Lsquare','Rsquare','Lcurly','Rcurly','EOE'];
 
     const lexOutput = debug.lexToField(lexInput,'name');

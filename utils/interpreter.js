@@ -1,7 +1,8 @@
-import { specialTokens, tokenRules } from './rulesets.js';
-import * as helpers from './helpers.js'
+import { specialTokens, tokenRules, t } from './rulesets.js';
+import * as helpers from './helpers.js';
+import * as lits from './literals.js';
 
-function lexer(text){
+export function lexer(text){
   let tokenFoundFlag;
   let tokenList = [];
   let i = 0;
@@ -41,7 +42,7 @@ function lexer(text){
   return tokenList;
 }
 
-function parser(tokenList,text){
+export function parser(tokenList,text){
   const rootToken= helpers.makeToken(null,null,specialTokens.root);
   const root= helpers.makeTreeNode("root",0,rootToken);
 
@@ -68,7 +69,88 @@ function parser(tokenList,text){
   return ctx.root;
 }
 
-export {
-  lexer,
-  parser,
+export function findIdent(node,text){
+  const litName = node.obj.toLowerCase();
+  let retVal;
+  if (node.parent.type == t.fcall && node.parent.evalStep == 1) {
+    retVal = lits.funcs[litName];
+    if (retVal == null) {throw helpers.InterpreterError.evaluatorError(node,text,`No such function ${node.obj}`)}
+  } else {
+    retVal = lits.nums[litName];
+    if (retVal == null) {throw helpers.InterpreterError.evaluatorError(node,text,`No such constant ${node.obj}`)}
+  }
+  return retVal;
+}
+
+export function evalNode(node,settings,text){
+  let l=null;
+  let r=null;
+  if (node.left!=null) {l = node.left.evalValue;}
+  if (node.right!=null) {r = node.right.evalValue;}
+
+  switch (node.type){
+    case t.root:
+      break;
+    case t.EOE:
+    case t.num:
+      node.evalValue = node.obj;
+      break;
+    case t.ident:
+      node.evalValue = findIdent(node,text);
+      break;
+    case t.fcall: //needs to be own special thing this one
+      try{
+        node.evalValue = l(r,settings);
+      }catch(e){
+        throw helpers.InterpreterError.evaluatorError(node,text,e.message)
+      }
+      break;
+    case t.comma:
+      node.evalValue = node.obj(l,r)
+      break;
+    case t.binop:
+    case t.minus:
+    case t.factorial:
+      if (Array.isArray(l) ||Array.isArray(r)) {
+        throw helpers.InterpreterError.evaluatorError(node,text,`the '${node.token.value}' operator does not accept tuples`)
+      }
+      node.evalValue = node.obj(l,r)
+      break;
+    default:
+      throw helpers.InterpreterError.evaluatorError(node,text,
+        `Critical error: evaluator encountered unexpected node of type ${node.type} in tree with token ${node.token}`)
+  }
+
+}
+
+export function evaluator(root, settings, text){
+
+  let node = root;
+
+  while (root.evalStep < 3){
+
+    if (node.evalStep < 1 && node.left!=null){
+      node.evalStep = 1;
+      node = node.left;
+
+    } else if (node.evalStep < 2 && node.right!=null){
+      node.evalStep = 2;
+      node = node.right;
+
+    } else{
+      node.evalStep = 3;
+      evalNode(node,settings,text);
+      node = node.parent;
+    }
+  }
+
+  return root.right.evalValue;
+}
+
+export function interpret(text, settings){
+
+  const tokens = lexer(text);
+  const tree = parser(tokens, text);
+  const answer = evaluator(tree, settings, text);
+  return answer;
 }

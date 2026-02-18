@@ -1,21 +1,24 @@
 import * as helpers from './helpers.js'
 
 export const opFuncs ={ //redo these maybe
-  exp:(l,r)=>{return l^r;},
+  exp:(l,r)=>{return l**r;},
   mult:(l,r)=>{return l*r;},
   divide:(l,r)=>{return l/r;},
   add:(l,r)=>{return l+r;},
   sub:(l,r)=>{return l-r;},
   invertSign:(l,r)=>{return -r;},
+  factorial:(l,r)=>{return helpers.factorial(l);},
+
   startTuple:(l,r)=>{return [l,r];},
   extendTuple:(l,r)=>{l.push(r); return l;},
-  fcall:(l,r)=>{return l(r);},
+  fcall:(l,r)=>{return l(r);}, // never used
 }
 
 const prio={ //priority
   literal: 20,
   bracket: 18,
   fcall: 18,
+  factorial: 10,
   exp: 8,
   mult: 6,
   add: 4,
@@ -63,6 +66,13 @@ const parseAs = {
     helpers.extendTip(ctx,node);
     return;
   },
+
+  factorial: (ctx, token)=>{
+    const node = helpers.makeTreeNode(opFuncs.factorial,prio.factorial,token);
+    helpers.descendInsert(ctx,node);
+    return;
+  },
+
   startTuple: (ctx,entry,token)=>{
     const node = helpers.makeTreeNode(opFuncs.startTuple,prio.comma,token);
     helpers.insertR(ctx,entry,node);
@@ -87,7 +97,7 @@ const parseAs = {
   },
 }
 
-const t = { // short for types
+export const t = { // short for types
   SOE: "SOE", // special tokens for start and end of expression
   EOE: "EOE",
   root: "root", // special type made by parser
@@ -101,16 +111,17 @@ const t = { // short for types
   comma: "comma",
   fcall: "fcall",
   minus: "minus",
+  factorial: "factorial",
 }
 
 const tGroups={
   prev:{
-    lits: [t.ident,t.num],
+    lits: [t.ident,t.num, t.factorial],
     ops: [t.binop,t.minus,t.comma,t.fcall], 
   },
   next:{
     lits:[t.Lbracket,t.ident,t.num, t.fcall, t.minus],
-    ops:[t.Rbracket,t.binop,t.comma, t.minus, t.EOE],
+    ops:[t.Rbracket,t.binop,t.comma, t.minus, t.factorial, t.EOE],
   }
 }
 
@@ -122,8 +133,8 @@ export const specialTokens = {
       (ctx, token)=> {
         const nextToken = ctx.tokens[ctx.i+1];
         if (nextToken.type == t.EOE){ 
-          throw helpers.InterpreterError.parserError(ctx,nextToken,
-            `Parser encountered empty input. Please provide an expression.`);
+          const node = helpers.makeTreeNode(0,prio.literal,nextToken);
+          helpers.extendTip(ctx,node);
         }
         else if (!tGroups.next.lits.includes(nextToken.type)){
           throw helpers.InterpreterError.parserError(ctx,nextToken,
@@ -346,6 +357,21 @@ export const tokenRules = [
     false,
     /^\+/,
     helpers.makeBinaryOperatorParseRule(parseAs.add,tGroups.next.lits),
+  ),
+
+  helpers.makeLexRule( 'factorial',
+    t.factorial,
+    false,
+    /^\!/,
+    (ctx, token)=>{
+      const nextToken = ctx.tokens[ctx.i+1];
+      if (tGroups.next.ops.includes(nextToken.type)){parseAs.factorial(ctx, token);}
+      else {
+        throw helpers.InterpreterError.parserError(ctx,nextToken,
+          `Parser encountered unexpected token '${nextToken.value}' passed after factorial operator '${token.value}'`);
+      }
+      return;
+    },
   ),
 ]
 
