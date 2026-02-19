@@ -109,5 +109,5 @@ export let nums = {
     "e":  Math.E,
     "phi": (1+Math.sqrt(5))/2,
     "ans": 0,
-    "mem": 0,
+    "m": 0,
 }
