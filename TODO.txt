@@ -1,3 +1,3 @@
-space and color buttons
-configure display and add interactivity
-add parser for input
+Implement proper front end for errors
+Add support for more numerical formats (scietific and non base 10 number)
+Improve visuals
