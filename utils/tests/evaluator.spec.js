@@ -43,8 +43,8 @@ describe('Correctly calculates', () => {
     expect(output).toStrictEqual(expectedOutput);
   });
 
-  test('PI + e + pHi + Ans + meM', () => {
-    const text = "PI + e + pHi + Ans + meM";
+  test('PI + e + pHi + Ans + m', () => {
+    const text = "PI + e + pHi + Ans + m";
     const expectedOutput = Math.PI+Math.E+(1+Math.sqrt(5))/2+0+0;
 
     const output = interpreter.interpret(text,settingDeg);

@@ -3,22 +3,32 @@ import * as lits from "./utils/literals.js";
 
 const display = document.getElementById("display");
 const input = document.getElementById("input");
-const history = document.getElementById("history");
-
+const result = document.getElementById("result");
 const panel = document.getElementById("button-panel");
 
+const calcSettings = {angleUnit:"deg"}
+
 document.addEventListener('mousedown', (e) => {
-  if (e.target !== input) {
+  if (![input,result].includes(e.target) ) {
     e.preventDefault();
   }
-})
-
-input.onblur = ()=>{
+  else {
     input.focus();
+    /*
     const i = input.selectionStart-5;
     setTimeout(() => {
         input.scrollLeft = input.scrollWidth*i/input.value.length;;
         }, 0)
+    */
+    }
+})
+
+input.onblur = ()=>{
+    
+    const i = input.selectionStart-5;
+    setTimeout(() => {
+        input.focus();
+        }, 10000)
 };
 
 function moveCursor(n){
@@ -51,12 +61,28 @@ function appendText(text) {
 
 function execute(){
     const text = input.value;
-    history.innerText = text;
-    input.value = interpreter.interpret(text);
+    let value;
+    try{
+        value = interpreter.interpret(text,calcSettings);
+    }catch (e) {
+        result.innerText = "ERROR";
+        console.error(e);
+        return;
+    }
+    result.innerText = value;
+    lits.nums.ans = value;
 }
 function addToM(addORsub){
     const text = input.value;
-    const value = interpreter.interpret(text);
+    let value;
+    try{
+        value = interpreter.interpret(text,calcSettings);
+    }catch (e) {
+        result.innerText = "ERROR";
+        console.error(e);
+        return;
+    }
+
     if (addORsub){
         lits.nums.m += value;
     }
@@ -71,7 +97,8 @@ function makeCalcBtn(title, func){
     button.title = title;
     button.textContent = title;
     button.onclick= (event) => {
-        func(event)
+        input.focus();
+        func(event);
     }
     return button;
 }
@@ -165,8 +192,34 @@ function makeSubPanel(grid){
 const subpanelLeft = makeSubPanel(BASICPANEL);
 const subpanelRight = makeSubPanel(ADVANCEDPANEL);
 
-
-
 panel.appendChild(subpanelLeft)
 
-panel.appendChild(subpanelRight)
+document.addEventListener('keydown',(e)=>{
+    if (e.key == 'Enter'){execute()}
+})
+
+const calcLayout = document.getElementById("calcLayout")
+const angleUnit = document.getElementById("angleUnit")
+
+angleUnit.addEventListener('change', () => {
+    if(angleUnit.checked){calcSettings.angleUnit="rad";}
+    else {calcSettings.angleUnit="deg";}
+});
+
+calcLayout.addEventListener('change', () => {
+    if(calcLayout.checked){
+        panel.appendChild(subpanelRight);
+        sliderContainer.appendChild(angleUnitCard);
+        result.style.fontSize="30pt";
+        
+    }
+    else {
+        panel.removeChild(subpanelRight);
+        sliderContainer.removeChild(angleUnitCard);
+        result.style.fontSize="26pt";
+    }
+});
+
+const angleUnitCard = document.getElementById("angleSliderCard");
+const sliderContainer = document.getElementById("slider-container");
+sliderContainer.removeChild(angleUnitCard);

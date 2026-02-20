@@ -8,6 +8,7 @@ export const opFuncs ={ //redo these maybe
   sub:(l,r)=>{return l-r;},
   invertSign:(l,r)=>{return -r;},
   factorial:(l,r)=>{return helpers.factorial(l);},
+  percent:(l,r)=>{return l/100;},
 
   startTuple:(l,r)=>{return [l,r];},
   extendTuple:(l,r)=>{l.push(r); return l;},
@@ -73,6 +74,12 @@ const parseAs = {
     return;
   },
 
+  percent: (ctx, token)=>{
+    const node = helpers.makeTreeNode(opFuncs.percent,prio.mult,token);
+    helpers.descendInsert(ctx,node);
+    return;
+  },
+
   startTuple: (ctx,entry,token)=>{
     const node = helpers.makeTreeNode(opFuncs.startTuple,prio.comma,token);
     helpers.insertR(ctx,entry,node);
@@ -111,17 +118,17 @@ export const t = { // short for types
   comma: "comma",
   fcall: "fcall",
   minus: "minus",
-  factorial: "factorial",
+  suffixop: "suffixop",
 }
 
 const tGroups={
   prev:{
-    lits: [t.ident,t.num, t.factorial],
+    lits: [t.ident,t.num, t.suffixop],
     ops: [t.binop,t.minus,t.comma,t.fcall], 
   },
   next:{
     lits:[t.Lbracket,t.ident,t.num, t.fcall, t.minus],
-    ops:[t.Rbracket,t.binop,t.comma, t.minus, t.factorial, t.EOE],
+    ops:[t.Rbracket,t.binop,t.comma, t.minus, t.suffixop, t.EOE],
   }
 }
 
@@ -322,19 +329,19 @@ export const tokenRules = [
     t.binop,
     false,
     /^\^/,
-    helpers.makeBinaryOperatorParseRule(parseAs.exp,tGroups.next.lits),
+    helpers.makeSimpleOperatorParseRule(parseAs.exp,tGroups.next.lits),
   ),
   helpers.makeLexRule( 'slash',
     t.binop,
     false,
     /^\//,
-    helpers.makeBinaryOperatorParseRule(parseAs.divide,tGroups.next.lits),
+    helpers.makeSimpleOperatorParseRule(parseAs.divide,tGroups.next.lits),
   ),
   helpers.makeLexRule( 'star',
     t.binop,
     false,
     /^\*/,
-    helpers.makeBinaryOperatorParseRule(parseAs.mult,tGroups.next.lits),
+    helpers.makeSimpleOperatorParseRule(parseAs.mult,tGroups.next.lits),
   ),
   helpers.makeLexRule( 'dash',
     t.minus,
@@ -356,22 +363,21 @@ export const tokenRules = [
     t.binop,
     false,
     /^\+/,
-    helpers.makeBinaryOperatorParseRule(parseAs.add,tGroups.next.lits),
+    helpers.makeSimpleOperatorParseRule(parseAs.add,tGroups.next.lits),
   ),
 
   helpers.makeLexRule( 'factorial',
-    t.factorial,
+    t.suffixop,
     false,
     /^\!/,
-    (ctx, token)=>{
-      const nextToken = ctx.tokens[ctx.i+1];
-      if (tGroups.next.ops.includes(nextToken.type)){parseAs.factorial(ctx, token);}
-      else {
-        throw helpers.InterpreterError.parserError(ctx,nextToken,
-          `Parser encountered unexpected token '${nextToken.value}' passed after factorial operator '${token.value}'`);
-      }
-      return;
-    },
+    helpers.makeSimpleOperatorParseRule(parseAs.factorial,tGroups.next.ops),
+  ),
+
+  helpers.makeLexRule( 'percent',
+    t.suffixop,
+    false,
+    /^\%/,
+    helpers.makeSimpleOperatorParseRule(parseAs.percent,tGroups.next.ops),
   ),
 ]
 

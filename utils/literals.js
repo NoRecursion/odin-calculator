@@ -2,7 +2,7 @@ import { factorial, InterpreterError } from "./helpers.js";
 
 function makeNullaryFunc(mather,name){
     const func = (args, settings) =>{
-        if (typeof args != null) {throw new InterpreterError(`The ${name} function takes no arguments`);}
+        if (args != null) {throw new InterpreterError(`The ${name} function takes no arguments`);}
         return mather();
     }
     return func;
@@ -85,8 +85,10 @@ export let funcs = {
             if (!Array.isArray(args)) {throw new InterpreterError("The sum function expects 2 or more arguments");}
             return args.reduce((acc,cur)=>acc+cur);
         },
+
     "npr": makeBinaryFunc((n,r)=>factorial(n)/factorial(n-r),"nCr"),
     "ncr": makeBinaryFunc((n,r)=>factorial(n)/(factorial(n-r)*factorial(r)),"nCr"),
+    "mod": makeBinaryFunc((a,b)=>a%b,"mod"),
 
     "sqrt": makeUnaryFunc(Math.sqrt,"sqrt"),
 

@@ -8,13 +8,30 @@
     <script type="module" src="./script.js" defer></script>
 </head>
 <body>
-
-
+    <div id="slider-container">
+        <div class="slider-card">
+            <p class="leftlabel">simple</p>
+            <label class="slider">
+                <input type="checkbox" id="calcLayout">
+                <span class="track"></span>
+            </label>
+            <p class="rightlabel">advanced</p>
+        </div>
+        <div class="slider-card" id = "angleSliderCard">
+            <p class="leftlabel">Deg</p>
+            <label class="slider">
+                <input type="checkbox" id="angleUnit">
+                <span class="track"></span>
+            </label>
+            <p class="rightlabel">Rad</p>
+        </div>
+    </div>
     <div id="face">
 
         <div id="display">
-            <p id="history"></p>
             <input id="input" type="text" autofocus size="1">
+            <p id="result"></p>
+            
         </div>
 
         <div id="button-panel">

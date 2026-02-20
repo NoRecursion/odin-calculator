@@ -115,7 +115,7 @@ export function evalNode(node,settings,text){
       break;
     case t.binop:
     case t.minus:
-    case t.factorial:
+    case t.suffixop:
       if (Array.isArray(l) ||Array.isArray(r)) {
         throw helpers.InterpreterError.evaluatorError(node,text,`The '${node.token.value}' operator does not accept tuples`)
       }

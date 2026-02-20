@@ -132,7 +132,7 @@ export function makeLexRule(name,type,ignore,regex,parseRule){
   }
 }
 
-export function makeBinaryOperatorParseRule(parser,validSuffixes){
+export function makeSimpleOperatorParseRule(parser,validSuffixes){
   const binopParser= (ctx, token)=> {
     const nextToken = ctx.tokens[ctx.i+1];
     if (!validSuffixes.includes(nextToken.type)){
